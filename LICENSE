@@ -1,0 +1,143 @@
+CUSTOM COMMERCIAL LICENSE
+==========================
+PRABANDH — Issue Management System
+Copyright © 2026 JAI VERSE. All rights reserved.
+
+Author:  JAI GUDIVADA
+Studio:  JAI VERSE
+Project: PRABANDH
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Grant of License
+───────────────────
+This license grants you (the "Licensee") a non-exclusive,
+non-transferable, revocable right to use, modify, and deploy
+the PRABANDH software ("the Software") for your internal
+business purposes, subject to the terms herein.
+
+2. Ownership & Attribution
+──────────────────────────
+The Software is owned by JAI VERSE and JAI GUDIVADA.
+All title, copyright, and intellectual property rights in
+the Software remain with JAI VERSE / JAI GUDIVADA.
+
+Any distribution or public deployment must retain the
+original authorship attribution:
+  "PRABANDH by JAI GUDIVADA / JAI VERSE"
+
+Modifications to the branding configuration file
+(frontend/src/config/branding.js) are permitted for
+white-label customization, but the original authorship
+metadata within that file must remain intact.
+
+3. Permitted Uses
+─────────────────
+  ✓ Using the Software for internal business operations
+  ✓ Modifying the Software for your own use
+  ✓ Deploying the Software on your own infrastructure
+  ✓ Showcasing the Software in your portfolio or resume
+    (with attribution)
+
+4. Prohibited Uses
+──────────────────
+  ✗ Redistributing or selling the Software as-is without
+    explicit written permission from JAI VERSE
+  ✗ Removing or altering copyright notices or attribution
+  ✗ Claiming original authorship of the Software
+  ✗ Using the Software to provide a hosted service to third
+    parties without a separate reseller agreement
+
+5. Commercial Licensing
+───────────────────────
+If you wish to:
+  • Sell, license, or sublicense the Software
+  • Use the Software in a commercial product or service
+  • Remove attribution requirements
+
+You must obtain a separate Commercial License from JAI VERSE.
+Contact: jaigudivada@jaiverse.com
+
+6. Disclaimer of Warranty
+─────────────────────────
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED.
+
+7. Limitation of Liability
+──────────────────────────
+IN NO EVENT SHALL JAI VERSE OR JAI GUDIVADA BE LIABLE FOR
+ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE
+OF THE SOFTWARE.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LICENSE RECOMMENDATIONS
+========================
+
+Based on your requirements (portfolio showcase, future
+commercialization, retained authorship), here are three
+options ranked by suitability:
+
+1. ★ CUSTOM COMMERCIAL LICENSE (RECOMMENDED)
+────────────────────────────────────────────
+   Best for: Full control over commercialization
+
+   Advantages:
+   • You retain all rights and can sell/license the software
+   • Attribution to JAI GUDIVADA / JAI VERSE is preserved
+   • Prevents others from reselling without your permission
+   • Allows portfolio showcase with attribution
+   • Flexible — you can grant exceptions on a case-by-case
+     basis
+
+   This is the file above. It gives you maximum flexibility
+   for future commercialization while protecting your
+   authorship.
+
+2. MIT LICENSE
+──────────────
+   Best for: Open-source community adoption
+
+   Advantages:
+   • Permissive — anyone can use, modify, and distribute
+   • Simple and well-understood
+   • Good for community contributions
+
+   Disadvantages:
+   • Others can sell your software without paying you
+   • No restriction on removing attribution in modified
+     versions (though the copyright notice must remain)
+   • Less suitable if you plan to monetize the software
+
+   If you choose MIT, the copyright line should read:
+     Copyright (c) 2026 JAI VERSE (JAI GUDIVADA)
+
+3. PROPRIETARY / ALL RIGHTS RESERVED
+─────────────────────────────────────
+   Best for: Complete restriction
+
+   Advantages:
+   • Full copyright protection
+   • No one can use, copy, or distribute without permission
+
+   Disadvantages:
+   • Prevents portfolio showcase without explicit permission
+   • No community contributions
+   • Harder to share with potential employers/clients
+   • Cannot be open-sourced
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SUMMARY: Use the CUSTOM COMMERCIAL LICENSE above. It gives
+you the right to:
+  • Showcase in your portfolio and resume (with attribution)
+  • Sell, license, or transfer the software in the future
+  • Preserve original authorship (JAI GUDIVADA / JAI VERSE)
+  • White-label for clients while keeping authorship records
+  • Grant custom exceptions to specific parties
+
+If you later want community contributions, you can relicense
+under MIT. The Custom Commercial License is the safest
+starting point for commercial software you may monetize.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
