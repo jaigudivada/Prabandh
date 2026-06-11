@@ -19,14 +19,10 @@ const DATA_FILE = path.join(DATA_DIR, 'data.json');
 // Express App Setup
 // ──────────────────────────────────────────────
 const app = express();
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'prabandh-default-secret-key-2024';
 
-// Validate JWT_SECRET is set — crash early instead of at runtime
-if (!JWT_SECRET) {
-  const errMsg = 'WARN: JWT_SECRET environment variable is missing. ' +
-    'Set it in your .env file (local) or Vercel Environment Variables (production). ' +
-    'Login will not work until this is configured.';
-  console.error(errMsg);
+if (!process.env.JWT_SECRET) {
+  console.warn('WARN: JWT_SECRET env variable not set. Using default secret (change for production).');
 }
 
 // ──────────────────────────────────────────────
