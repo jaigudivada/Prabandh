@@ -84,16 +84,24 @@ function loadData() {
   if (fs.existsSync(DATA_FILE)) {
     try {
       return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('Warning: Could not parse data.json, starting fresh:', err.message);
+    }
   }
   return { users: [], issues: [], notifications: [], categories: [], permissions: {}, workers: [], websiteIssues: [] };
 }
 
 function saveData() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify({ users, issues, notifications, categories, permissions, workers, websiteIssues }, null, 2));
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ users, issues, notifications, categories, permissions, workers, websiteIssues }, null, 2));
+  } catch (err) {
+    console.error('Warning: Could not save data.json:', err.message);
+  }
 }
 
-// In-memory fallback for serverless — data loaded on first request
+// ──────────────────────────────────────────────
+// In-memory data store — loaded on first invocation
+// ──────────────────────────────────────────────
 let data = loadData();
 let users = data.users || [];
 let issues = data.issues || [];
@@ -103,30 +111,34 @@ let permissions = data.permissions || {};
 let workers = data.workers || [];
 let websiteIssues = data.websiteIssues || [];
 
-// Ensure all users have isActive field
-users.forEach((u) => { if (u.isActive === undefined) u.isActive = true; });
-
-// Seed default users and categories if empty
-async function seedDefaults() {
+// ──────────────────────────────────────────────
+// Seed default data if empty (SYNCHRONOUS — no async/await race condition)
+// bcrypt hashes are pre-computed so this runs instantly at module load.
+// ──────────────────────────────────────────────
+function seedDefaults() {
   if (users.length === 0) {
+    // Pre-hashed bcrypt passwords (salt rounds = 10) for default accounts:
+    // admin123, supervisor123, official123, user123
     const defaultUsers = [
-      { email: 'admin@example.com', password: 'admin123', name: 'System Admin', role: 'ADMIN' },
-      { email: 'supervisor@example.com', password: 'supervisor123', name: 'Jane Supervisor', role: 'SUPERVISOR' },
-      { email: 'official@example.com', password: 'official123', name: 'John Official', role: 'OFFICIAL' },
-      { email: 'user@example.com', password: 'user123', name: 'Regular User', role: 'USER' },
+      { email: 'admin@example.com', password: '$2a$10$WMq2QOjwBRGb6.4CBYeP2Oy4TvTYMWLx9kn2Q6z/wJOLUP8k.gES2', name: 'System Admin', role: 'ADMIN' },
+      { email: 'supervisor@example.com', password: '$2a$10$B6sGZbgieDLDetM6vnn9Rub0OI4l9cSwoGTNkoP7wwhLApaPTyWYK', name: 'Jane Supervisor', role: 'SUPERVISOR' },
+      { email: 'official@example.com', password: '$2a$10$m8MnJMM9nuDeov3Jbv/j8.krHGLWRgn6pL4wZ/dvhT.lOUG6Cclom', name: 'John Official', role: 'OFFICIAL' },
+      { email: 'user@example.com', password: '$2a$10$3a9cO5unBfi4xFXsCVirMOYgUVp/rdGJAc6xFJblhhm0yYlnThTC2', name: 'Regular User', role: 'USER' },
     ];
     for (const u of defaultUsers) {
       users.push({
         id: uuidv4(),
         email: u.email,
-        password: await bcrypt.hash(u.password, 10),
+        password: u.password,
         name: u.name,
         role: u.role,
         isActive: true,
         createdAt: new Date().toISOString(),
       });
     }
+    console.log('Seeded ' + defaultUsers.length + ' default users (synchronous)');
   }
+
   if (categories.length === 0) {
     categories.push(
       { id: 'wifi', name: 'Wi-Fi', value: 'WIFI' },
@@ -138,6 +150,7 @@ async function seedDefaults() {
       { id: 'systems', name: 'Systems', value: 'SYSTEMS' }
     );
   }
+
   if (Object.keys(permissions).length === 0) {
     permissions = {
       USER: { canReport: true, canViewOwn: true },
@@ -146,6 +159,7 @@ async function seedDefaults() {
       ADMIN: { canReport: true, canViewAll: true, canAssign: true, canChangeStatus: true, canPrioritize: true, canManageUsers: true, canManageCategories: true, canManagePermissions: true, canViewReports: true, canViewAnalytics: true }
     };
   }
+
   if (workers.length === 0) {
     workers.push(
       { id: uuidv4(), name: 'Rahul', role: 'Electrician', department: 'Electrical', phone: '9876543210', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
@@ -158,8 +172,11 @@ async function seedDefaults() {
       { id: uuidv4(), name: 'Akhil', role: 'Maintenance', department: 'Maintenance', phone: '9876543217', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() }
     );
   }
+
   saveData();
 }
+
+// Run seeding synchronously — data will be ready before any request is handled
 seedDefaults();
 
 // ──────────────────────────────────────────────
@@ -205,6 +222,7 @@ function authorize(...roles) {
 }
 
 function sanitizeUser(u) {
+  if (!u) return null;
   const { password, ...rest } = u;
   return rest;
 }
@@ -217,7 +235,6 @@ function findAssignee(id) {
 // Auth Routes
 // ──────────────────────────────────────────────
 app.post('/api/auth/register', async (req, res) => {
-  // ... (same as server.js)
   try {
     const { email, password, name, role = 'USER' } = req.body;
     if (!email || !password || !name) return res.status(400).json({ error: 'Missing fields' });
@@ -236,13 +253,32 @@ app.post('/api/auth/register', async (req, res) => {
     const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: sanitizeUser(user) });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Register error:', err);
+    res.status(500).json({ error: 'Registration failed: ' + err.message });
   }
 });
 
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    // Double-check data is loaded (defensive — handles edge case on cold start)
+    if (users.length === 0) {
+      // Re-initialize from file if available, or reseed
+      const reloaded = loadData();
+      if (reloaded.users && reloaded.users.length > 0) {
+        users = reloaded.users;
+        issues = reloaded.issues;
+        notifications = reloaded.notifications;
+        categories = reloaded.categories;
+        permissions = reloaded.permissions;
+        workers = reloaded.workers;
+        websiteIssues = reloaded.websiteIssues;
+      } else {
+        seedDefaults();
+      }
+    }
+
     const user = users.find((u) => u.email === email);
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
     if (!user.isActive) return res.status(403).json({ error: 'Account deactivated. Contact admin.' });
@@ -251,7 +287,8 @@ app.post('/api/auth/login', async (req, res) => {
     const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: sanitizeUser(user) });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Login failed: ' + err.message });
   }
 });
 
@@ -313,7 +350,8 @@ app.post('/api/issues', authenticate, upload.array('attachments', 5), (req, res)
     const response = { ...issue, reporter: responseReporter };
     res.status(201).json(response);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Create issue error:', err);
+    res.status(500).json({ error: 'Failed to create issue: ' + err.message });
   }
 });
 
@@ -345,7 +383,8 @@ app.get('/api/issues', authenticate, (req, res) => {
     });
     res.json(mapped);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('List issues error:', err);
+    res.status(500).json({ error: 'Failed to list issues' });
   }
 });
 
@@ -363,7 +402,8 @@ app.get('/api/issues/:id', authenticate, (req, res) => {
     const out = { ...issue, reporter: outReporter, assignee: assignee ? sanitizeUser(assignee) : null };
     res.json(out);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Get issue error:', err);
+    res.status(500).json({ error: 'Failed to get issue' });
   }
 });
 
@@ -375,7 +415,8 @@ app.delete('/api/issues/:id', authenticate, authorize('ADMIN'), (req, res) => {
     saveData();
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Delete issue error:', err);
+    res.status(500).json({ error: 'Failed to delete issue' });
   }
 });
 
@@ -434,7 +475,8 @@ app.patch('/api/issues/:id', authenticate, (req, res) => {
     const out = { ...issue, reporter: outReporter, assignee: assignee ? sanitizeUser(assignee) : null };
     res.json(out);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Update issue error:', err);
+    res.status(500).json({ error: 'Failed to update issue' });
   }
 });
 
@@ -453,7 +495,8 @@ app.get('/api/notifications', authenticate, (req, res) => {
       });
     res.json(notifs);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Notifications error:', err);
+    res.status(500).json({ error: 'Failed to load notifications' });
   }
 });
 
@@ -463,7 +506,8 @@ app.patch('/api/notifications/:id/read', authenticate, (req, res) => {
     if (n) { n.isRead = true; saveData(); }
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Mark read error:', err);
+    res.status(500).json({ error: 'Failed to mark notification as read' });
   }
 });
 
@@ -471,11 +515,11 @@ app.patch('/api/notifications/:id/read', authenticate, (req, res) => {
 // Workers
 // ──────────────────────────────────────────────
 app.get('/api/workers', authenticate, authorize('SUPERVISOR', 'ADMIN'), (req, res) => {
-  try { res.json(workers.filter((w) => w.status === 'ACTIVE')); } catch (err) { res.status(500).json({ error: err.message }); }
+  try { res.json(workers.filter((w) => w.status === 'ACTIVE')); } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/workers/all', authenticate, authorize('ADMIN'), (req, res) => {
-  try { res.json(workers); } catch (err) { res.status(500).json({ error: err.message }); }
+  try { res.json(workers); } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/workers', authenticate, authorize('ADMIN'), (req, res) => {
@@ -486,7 +530,7 @@ app.post('/api/workers', authenticate, authorize('ADMIN'), (req, res) => {
     workers.push(worker);
     saveData();
     res.status(201).json(worker);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.patch('/api/workers/:id', authenticate, authorize('ADMIN'), (req, res) => {
@@ -496,7 +540,7 @@ app.patch('/api/workers/:id', authenticate, authorize('ADMIN'), (req, res) => {
     Object.assign(worker, req.body, { id: worker.id, createdAt: worker.createdAt });
     saveData();
     res.json(worker);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/workers/:id', authenticate, authorize('ADMIN'), (req, res) => {
@@ -506,14 +550,14 @@ app.delete('/api/workers/:id', authenticate, authorize('ADMIN'), (req, res) => {
     workers.splice(idx, 1);
     saveData();
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 // ──────────────────────────────────────────────
 // Users
 // ──────────────────────────────────────────────
 app.get('/api/users', authenticate, authorize('ADMIN', 'OFFICIAL'), (req, res) => {
-  try { res.json(users.map(sanitizeUser).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))); } catch (err) { res.status(500).json({ error: err.message }); }
+  try { res.json(users.map(sanitizeUser).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))); } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.patch('/api/users/:id/role', authenticate, authorize('ADMIN'), (req, res) => {
@@ -523,7 +567,7 @@ app.patch('/api/users/:id/role', authenticate, authorize('ADMIN'), (req, res) =>
     user.role = req.body.role;
     saveData();
     res.json(sanitizeUser(user));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.patch('/api/users/:id/active', authenticate, authorize('ADMIN'), (req, res) => {
@@ -533,7 +577,7 @@ app.patch('/api/users/:id/active', authenticate, authorize('ADMIN'), (req, res) 
     user.isActive = req.body.isActive;
     saveData();
     res.json(sanitizeUser(user));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.patch('/api/users/:id', authenticate, authorize('ADMIN'), async (req, res) => {
@@ -548,7 +592,7 @@ app.patch('/api/users/:id', authenticate, authorize('ADMIN'), async (req, res) =
     if (req.body.password) user.password = await bcrypt.hash(req.body.password, 10);
     saveData();
     res.json(sanitizeUser(user));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/users/:id', authenticate, authorize('ADMIN'), (req, res) => {
@@ -558,14 +602,14 @@ app.delete('/api/users/:id', authenticate, authorize('ADMIN'), (req, res) => {
     users.splice(idx, 1);
     saveData();
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 // ──────────────────────────────────────────────
 // Categories
 // ──────────────────────────────────────────────
 app.get('/api/categories', authenticate, (req, res) => {
-  try { res.json(categories); } catch (err) { res.status(500).json({ error: err.message }); }
+  try { res.json(categories); } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/categories', authenticate, authorize('ADMIN'), (req, res) => {
@@ -577,7 +621,7 @@ app.post('/api/categories', authenticate, authorize('ADMIN'), (req, res) => {
     categories.push(category);
     saveData();
     res.status(201).json(category);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/categories/:id', authenticate, authorize('ADMIN'), (req, res) => {
@@ -587,7 +631,7 @@ app.delete('/api/categories/:id', authenticate, authorize('ADMIN'), (req, res) =
     categories.splice(idx, 1);
     saveData();
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 // ──────────────────────────────────────────────
@@ -608,7 +652,7 @@ app.get('/api/analytics', authenticate, authorize('ADMIN', 'OFFICIAL', 'SUPERVIS
     issues.forEach((i) => { priorities[i.priority] = (priorities[i.priority] || 0) + 1; });
     const byPriority = Object.entries(priorities).map(([priority, count]) => ({ priority, _count: { priority: count } }));
     res.json({ totalIssues, byStatus, byCategory, byPriority });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/analytics/supervisors', authenticate, authorize('ADMIN', 'OFFICIAL', 'SUPERVISOR'), (req, res) => {
@@ -636,7 +680,7 @@ app.get('/api/analytics/supervisors', authenticate, authorize('ADMIN', 'OFFICIAL
       };
     });
     res.json(data);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/analytics/trends', authenticate, authorize('ADMIN', 'OFFICIAL', 'SUPERVISOR'), (req, res) => {
@@ -651,7 +695,7 @@ app.get('/api/analytics/trends', authenticate, authorize('ADMIN', 'OFFICIAL', 'S
       return { date, total: dayIssues.length, pending: dayIssues.filter((i) => i.status === 'PENDING').length, inProgress: dayIssues.filter((i) => i.status === 'IN_PROGRESS').length, resolved: dayIssues.filter((i) => i.status === 'RESOLVED').length };
     });
     res.json(daily);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/analytics/users', authenticate, authorize('ADMIN', 'OFFICIAL', 'SUPERVISOR'), (req, res) => {
@@ -662,7 +706,7 @@ app.get('/api/analytics/users', authenticate, authorize('ADMIN', 'OFFICIAL', 'SU
       return { id: u.id, name: u.name, role: u.role, reported: reported.length, resolved: resolved.length, resolutionRate: reported.length > 0 ? Math.round((resolved.length / reported.length) * 100) : 0 };
     }).sort((a, b) => b.reported - a.reported);
     res.json(userStats);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/analytics/departments', authenticate, authorize('ADMIN', 'OFFICIAL', 'SUPERVISOR'), (req, res) => {
@@ -680,14 +724,14 @@ app.get('/api/analytics/departments', authenticate, authorize('ADMIN', 'OFFICIAL
       return { category: cat.name, total: catIssues.length, pending: catIssues.filter((i) => i.status === 'PENDING').length, inProgress: catIssues.filter((i) => i.status === 'IN_PROGRESS').length, resolved: resolved.length, resolutionRate: catIssues.length > 0 ? Math.round((resolved.length / catIssues.length) * 100) : 0, avgResolutionTime: Math.round(avgResolutionTime * 10) / 10 };
     });
     res.json(deptData);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 // ──────────────────────────────────────────────
 // Permissions
 // ──────────────────────────────────────────────
 app.get('/api/permissions', authenticate, authorize('ADMIN'), (req, res) => {
-  try { res.json(permissions); } catch (err) { res.status(500).json({ error: err.message }); }
+  try { res.json(permissions); } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.patch('/api/permissions/:role', authenticate, authorize('ADMIN'), (req, res) => {
@@ -696,7 +740,7 @@ app.patch('/api/permissions/:role', authenticate, authorize('ADMIN'), (req, res)
     permissions[role] = { ...permissions[role], ...req.body };
     saveData();
     res.json(permissions[role]);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 // ──────────────────────────────────────────────
@@ -708,7 +752,7 @@ app.get('/api/website-issues', authenticate, authorize('ADMIN', 'OFFICIAL', 'SUP
       ? websiteIssues.filter((wi) => wi.reporterId === req.userId)
       : websiteIssues;
     res.json(result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/website-issues', authenticate, authorize('OFFICIAL', 'SUPERVISOR'), upload.array('screenshots', 3), (req, res) => {
@@ -736,7 +780,7 @@ app.post('/api/website-issues', authenticate, authorize('OFFICIAL', 'SUPERVISOR'
     websiteIssues.push(wi);
     saveData();
     res.status(201).json(wi);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.patch('/api/website-issues/:id', authenticate, authorize('ADMIN'), (req, res) => {
@@ -746,7 +790,7 @@ app.patch('/api/website-issues/:id', authenticate, authorize('ADMIN'), (req, res
     if (req.body.status) { wi.status = req.body.status; wi.updatedAt = new Date().toISOString(); }
     saveData();
     res.json(wi);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/website-issues/:id', authenticate, authorize('ADMIN'), (req, res) => {
@@ -756,14 +800,19 @@ app.delete('/api/website-issues/:id', authenticate, authorize('ADMIN'), (req, re
     websiteIssues.splice(idx, 1);
     saveData();
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
 });
 
 // ──────────────────────────────────────────────
 // Health
 // ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    users: users.length,
+    issues: issues.length
+  });
 });
 
 // ──────────────────────────────────────────────
