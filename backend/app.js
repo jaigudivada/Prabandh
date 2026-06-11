@@ -6,6 +6,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
+require('dotenv').config();
 
 // ──────────────────────────────────────────────
 // Detect if running on Vercel (serverless)
