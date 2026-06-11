@@ -159,14 +159,14 @@ function seedDefaults() {
 
   if (workers.length === 0) {
     workers.push(
-      { id: uuidv4(), name: 'Rahul', role: 'Electrician', department: 'Electrical', phone: '9876543210', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
-      { id: uuidv4(), name: 'Sasi', role: 'Cleaner', department: 'Housekeeping', phone: '9876543211', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
-      { id: uuidv4(), name: 'Jai', role: 'IT Support', department: 'IT', phone: '9876543212', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
-      { id: uuidv4(), name: 'Ram', role: 'Carpenter', department: 'Maintenance', phone: '9876543213', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
-      { id: uuidv4(), name: 'Arjun', role: 'Plumber', department: 'Plumbing', phone: '9876543214', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
-      { id: uuidv4(), name: 'Kiran', role: 'Gardener', department: 'Landscaping', phone: '9876543215', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
-      { id: uuidv4(), name: 'Naveen', role: 'Security', department: 'Security', phone: '9876543216', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
-      { id: uuidv4(), name: 'Akhil', role: 'Maintenance', department: 'Maintenance', phone: '9876543217', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() }
+      { id: uuidv4(), name: 'Rahul', role: 'Electrician', department: 'Electrical', phone: '0000000000', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
+      { id: uuidv4(), name: 'Pawan', role: 'Cleaner', department: 'Housekeeping', phone: '0000000000', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
+      { id: uuidv4(), name: 'Jai', role: 'IT Support', department: 'IT', phone: '0000000000', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
+      { id: uuidv4(), name: 'Ram', role: 'Carpenter', department: 'Maintenance', phone: '0000000000', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
+      { id: uuidv4(), name: 'Arjun', role: 'Plumber', department: 'Plumbing', phone: '0000000000', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
+      { id: uuidv4(), name: 'Kiran', role: 'Gardener', department: 'Landscaping', phone: '0000000000', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
+      { id: uuidv4(), name: 'Naveen', role: 'Security', department: 'Security', phone: '0000000000', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() },
+      { id: uuidv4(), name: 'Akhil', role: 'Maintenance', department: 'Maintenance', phone: '0000000000', availability: 'Available', status: 'ACTIVE', createdAt: new Date().toISOString() }
     );
   }
 
