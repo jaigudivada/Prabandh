@@ -22,10 +22,10 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 // Validate JWT_SECRET is set — crash early instead of at runtime
 if (!JWT_SECRET) {
-  const errMsg = 'FATAL: JWT_SECRET environment variable is missing. ' +
-    'Set it in your .env file (local) or Vercel Environment Variables (production).';
+  const errMsg = 'WARN: JWT_SECRET environment variable is missing. ' +
+    'Set it in your .env file (local) or Vercel Environment Variables (production). ' +
+    'Login will not work until this is configured.';
   console.error(errMsg);
-  throw new Error(errMsg);
 }
 
 // ──────────────────────────────────────────────
@@ -173,7 +173,9 @@ function seedDefaults() {
     );
   }
 
-  saveData();
+  if (!IS_VERCEL) {
+    saveData();
+  }
 }
 
 // Run seeding synchronously — data will be ready before any request is handled
@@ -833,4 +835,13 @@ app.use((err, req, res, next) => {
 // ──────────────────────────────────────────────
 // Export for Vercel serverless
 // ──────────────────────────────────────────────
+console.log("=== SERVER STARTING ===");
+console.log("VERCEL:", process.env.VERCEL);
+console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("JWT:", !!process.env.JWT_SECRET);
+console.log("DATA_FILE:", DATA_FILE);
+console.log("USERS:", users.length);
+console.log("ISSUES:", issues.length);
+console.log("=== SERVER READY ===");
+
 module.exports = app;
