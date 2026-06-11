@@ -20,16 +20,47 @@ const DATA_FILE = path.join(DATA_DIR, 'data.json');
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// ──────────────────────────────────────────────
+// CORS — allow known origins + dynamic production domains
+// ──────────────────────────────────────────────
 const corsOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',').map((s) => s.trim())
   : ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
+// Dynamically allow any Vercel deployment domain in production
 app.use(cors({
-  origin: corsOrigins,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (server-to-server, curl, etc.)
+    if (!origin) return callback(null, true);
+    // Check against known origins list
+    if (corsOrigins.includes(origin)) return callback(null, true);
+    // Allow any *.vercel.app domain
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    // Allow localhost in development
+    if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true
 }));
 
 app.use(express.json({ limit: '10mb' }));
+
+// ──────────────────────────────────────────────
+// Vercel route prefix handler
+// ──────────────────────────────────────────────
+// Vercel's experimentalServices routes /_/backend/* to this serverless function.
+// The request may arrive with /_/backend still in the path.
+// This middleware strips the prefix so Express routes (/api/auth/login) match.
+const VERCEL_ROUTE_PREFIX = '/_/backend';
+app.use((req, res, next) => {
+  if (req.path.startsWith(VERCEL_ROUTE_PREFIX)) {
+    req.url = req.url.replace(VERCEL_ROUTE_PREFIX, '');
+    if (req.url === '') req.url = '/';
+  }
+  next();
+});
 
 // Serve uploaded files (only works for persistent storage in dev)
 const uploadsDir = IS_VERCEL ? '/tmp/uploads' : path.join(__dirname, 'uploads');
@@ -725,6 +756,21 @@ app.delete('/api/website-issues/:id', authenticate, authorize('ADMIN'), (req, re
 // ──────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ──────────────────────────────────────────────
+// Catch-all for unmatched API routes (prevent HTML 404)
+// ──────────────────────────────────────────────
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
+
+// ──────────────────────────────────────────────
+// Global error handler
+// ──────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // ──────────────────────────────────────────────
