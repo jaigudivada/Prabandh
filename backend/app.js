@@ -20,6 +20,14 @@ const DATA_FILE = path.join(DATA_DIR, 'data.json');
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// Validate JWT_SECRET is set — crash early instead of at runtime
+if (!JWT_SECRET) {
+  const errMsg = 'FATAL: JWT_SECRET environment variable is missing. ' +
+    'Set it in your .env file (local) or Vercel Environment Variables (production).';
+  console.error(errMsg);
+  throw new Error(errMsg);
+}
+
 // ──────────────────────────────────────────────
 // CORS — allow known origins + dynamic production domains
 // ──────────────────────────────────────────────
